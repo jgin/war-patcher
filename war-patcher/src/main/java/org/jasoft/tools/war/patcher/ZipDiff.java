@@ -1,10 +1,12 @@
 package org.jasoft.tools.war.patcher;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
@@ -26,44 +28,55 @@ public class ZipDiff {
     
     public void diff() {
 //        TreeSet<ZipArchiveEntry> zipArchiveEntrys=new TreeSet<ZipArchiveEntry>(new ZipArchiveEntryComparator());
-        Map<Long, ZipArchiveEntry> srcFiles=loadFiles(getSrcZip());
-        Map<Long, ZipArchiveEntry> targetFiles=loadFiles(getTargetZip());
+        Map<String, ZipArchiveEntry> srcFiles=loadFiles(getSrcZip());
+        Map<String, ZipArchiveEntry> targetFiles=loadFiles(getTargetZip());
         
-        Map<Long, ZipArchiveEntry> newFiles=new HashMap<Long, ZipArchiveEntry>();
+        Map<String, ZipArchiveEntry> newFiles=new HashMap<String, ZipArchiveEntry>();
         
-        Iterator<Long> targetKeys=targetFiles.keySet().iterator();
+        Iterator<String> targetKeys=targetFiles.keySet().iterator();
         while (targetKeys.hasNext()) {
-            Long targetCrc=targetKeys.next();
-            if (!srcFiles.containsKey(targetCrc)) {
-                newFiles.put(targetCrc, targetFiles.get(targetCrc));
+            String targetFilename=targetKeys.next();
+            if (!srcFiles.containsKey(targetFilename)
+                    || targetFiles.get(targetFilename).getCrc()!=srcFiles.get(targetFilename).getCrc()) {
+                newFiles.put(targetFilename, targetFiles.get(targetFilename));
             }
-            srcFiles.remove(targetCrc);
+            srcFiles.remove(targetFilename);
         }
         /**
          * Al teminar en srcFiles quedan los archivos eliminados
          * (Aquellos que estánn en el origen pero no en el destino)
          */
         
-        System.out.println("-- Modificados y cambiados:");
-        for (ZipArchiveEntry zae : newFiles.values()) {
-            System.out.println(zae.getName());
+//        System.out.println("-- Modificados y cambiados:");
+//        for (ZipArchiveEntry zae : newFiles.values()) {
+//            System.out.println(zae.getName());
+//        }
+//        System.out.println("\n-- Eliminados:");
+//        for (ZipArchiveEntry zae : srcFiles.values()) {
+//            System.out.println(zae.getName());
+//        }
+        
+        String tmpFolderPath=targetZip+".diff.tmp";
+        File tmpFolder=new File(tmpFolderPath);
+        
+        if (!tmpFolder.mkdir()) {
+            throw new RuntimeException("Error al crear la carpeta: "+tmpFolderPath);
         }
-        System.out.println("\n-- Eliminados:");
-        for (ZipArchiveEntry zae : srcFiles.values()) {
-            System.out.println(zae.getName());
-        }
+        
+        TreeSet<String> filesToUnzip=new TreeSet<String>(newFiles.keySet());
+        ZipUtil.extractZip(targetZip, tmpFolderPath, filesToUnzip);
         
     }
     
-    private Map<Long, ZipArchiveEntry> loadFiles(String filepath) {
-        Map<Long, ZipArchiveEntry> result=new HashMap<Long, ZipArchiveEntry>();
+    private Map<String, ZipArchiveEntry> loadFiles(String filepath) {
+        Map<String, ZipArchiveEntry> result=new HashMap<String, ZipArchiveEntry>();
         
         try {
             ZipFile zf=new ZipFile(filepath);
             Enumeration<ZipArchiveEntry> e=zf.getEntries();
             while (e.hasMoreElements()) {
                 ZipArchiveEntry zae=e.nextElement();
-                result.put(zae.getCrc(), zae);
+                result.put(zae.getName(), zae);
             }
             zf.close();
         } catch (IOException ioe) {

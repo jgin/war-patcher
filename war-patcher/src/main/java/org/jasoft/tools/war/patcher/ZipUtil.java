@@ -7,6 +7,9 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
 import java.util.Enumeration;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
 import org.apache.commons.compress.archivers.zip.ZipFile;
@@ -19,6 +22,8 @@ import org.apache.commons.io.IOUtils;
  */
 public class ZipUtil {
 
+    static final Logger log=Logger.getLogger(ZipUtil.class.getName());
+    
     /**
      * Creates a zip file at the specified path with the contents of the
      * specified directory. NB:
@@ -94,19 +99,24 @@ public class ZipUtil {
      *
      * @param archivePath path to zip file
      * @param destinationPath path to extract zip file to. Created if it doesn't
+     * @param filesToUnzip rutas relativas de los archivos a descomprimir. Se ignoran los archivos inexistentes. Si es null se descompimen todos los archivos
      * exist.
      */
-    public static void extractZip(String archivePath, String destinationPath) {
+    public static void extractZip(String archivePath, String destinationPath, Set<String> filesToUnzip) {
         File archiveFile = new File(archivePath);
         File unzipDestFolder = null;
 
         try {
             unzipDestFolder = new File(destinationPath);
             String[] zipRootFolder = new String[]{null};
-            unzipFolder(archiveFile, archiveFile.length(), unzipDestFolder, zipRootFolder);
+            unzipFolder(archiveFile, archiveFile.length(), unzipDestFolder, zipRootFolder, filesToUnzip);
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    
+    public static void extractZip(String archivePath, String destinationPath) {
+        extractZip(archivePath, destinationPath, null);
     }
     
     /**
@@ -121,7 +131,7 @@ public class ZipUtil {
     private static boolean unzipFolder(File archiveFile,
             long compressedSize,
             File zipDestinationFolder,
-            String[] outputZipRootFolder) {
+            String[] outputZipRootFolder, Set<String> filesToUnnzip) {
 
         ZipFile zipFile = null;
         try {
@@ -131,6 +141,11 @@ public class ZipUtil {
             Enumeration entries = zipFile.getEntries();
             while (entries.hasMoreElements()) {
                 ZipArchiveEntry zipEntry = (ZipArchiveEntry) entries.nextElement();
+                
+                if (filesToUnnzip!=null) {
+                    if (!filesToUnnzip.contains(zipEntry.getName())) continue;
+                }
+                
                 String name = zipEntry.getName();
                 name = name.replace('\\', '/');
                 int i = name.indexOf('/');
@@ -191,7 +206,7 @@ public class ZipUtil {
     }
 
     private static void log(String msg) {
-        System.out.println(msg);
+        log.log(Level.WARNING, msg);
     }
 
     /**
