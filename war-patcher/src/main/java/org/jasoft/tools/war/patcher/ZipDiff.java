@@ -64,7 +64,7 @@ public class ZipDiff {
         }
         
         TreeSet<String> filesToUnzip=new TreeSet<String>(newFiles.keySet());
-        ZipUtil.extractZip(targetZip, tmpFolderPath, filesToUnzip);
+        ZipUtil.extract(targetZip, tmpFolderPath, filesToUnzip);
         
     }
     

@@ -19,6 +19,7 @@ import org.apache.commons.io.IOUtils;
  * Utility to Zip and Unzip nested directories recursively.
  *
  * @author Robin Spark
+ * @author jgin
  */
 public class ZipUtil {
 
@@ -92,130 +93,59 @@ public class ZipUtil {
             }
         }
     }
-
-    /**
-     * Extract zip file at the specified destination path. NB:archive must
-     * consist of a single root folder containing everything else
-     *
-     * @param archivePath path to zip file
-     * @param destinationPath path to extract zip file to. Created if it doesn't
-     * @param filesToUnzip rutas relativas de los archivos a descomprimir. Se ignoran los archivos inexistentes. Si es null se descompimen todos los archivos
-     * exist.
-     */
-    public static void extractZip(String archivePath, String destinationPath, Set<String> filesToUnzip) {
-        File archiveFile = new File(archivePath);
-        File unzipDestFolder = null;
-
-        try {
-            unzipDestFolder = new File(destinationPath);
-            String[] zipRootFolder = new String[]{null};
-            unzipFolder(archiveFile, archiveFile.length(), unzipDestFolder, zipRootFolder, filesToUnzip);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    
+    public static void extract(String srcZip, String targetFolder) {
+        extract(srcZip, targetFolder, null);
     }
     
-    public static void extractZip(String archivePath, String destinationPath) {
-        extractZip(archivePath, destinationPath, null);
-    }
-    
-    /**
-     * Unzips a zip file into the given destination directory.
-     *
-     * The archive file MUST have a unique "root" folder. This root folder is
-     * skipped when unarchiving.
-     *
-     * @return true if folder is unzipped correctly.
-     */
-//    @SuppressWarnings("unchecked")
-    private static boolean unzipFolder(File archiveFile,
-            long compressedSize,
-            File zipDestinationFolder,
-            String[] outputZipRootFolder, Set<String> filesToUnnzip) {
-
+    public static void extract(String srcZip, String targetFolder, Set<String> filesToUnzip) {
         ZipFile zipFile = null;
+        
         try {
-            zipFile = new ZipFile(archiveFile);
+            zipFile=new ZipFile(srcZip);
             byte[] buf = new byte[65536];
 
-            Enumeration entries = zipFile.getEntries();
+            Enumeration<ZipArchiveEntry> entries = zipFile.getEntries();
             while (entries.hasMoreElements()) {
-                ZipArchiveEntry zipEntry = (ZipArchiveEntry) entries.nextElement();
+                ZipArchiveEntry zae=entries.nextElement();
                 
-                if (filesToUnnzip!=null) {
-                    if (!filesToUnnzip.contains(zipEntry.getName())) continue;
+                if (filesToUnzip!=null) {
+                    if (!filesToUnzip.contains(zae.getName())) continue;
                 }
                 
-                String name = zipEntry.getName();
-                name = name.replace('\\', '/');
-                int i = name.indexOf('/');
-                if (i > 0) {
-                    outputZipRootFolder[0] = name.substring(0, i);
-                }
-                name = name.substring(i + 1);
-
-                File destinationFile = new File(zipDestinationFolder, name);
-                if (name.endsWith("/")) {
-                    if (!destinationFile.isDirectory() && !destinationFile.mkdirs()) {
-                        log("Error creating temp directory:" + destinationFile.getPath());
-                        return false;
-                    }
-                    continue;
-                } else if (name.indexOf('/') != -1) {
-                    // Create the the parent directory if it doesn't exist
-                    File parentFolder = destinationFile.getParentFile();
-                    if (!parentFolder.isDirectory()) {
-                        if (!parentFolder.mkdirs()) {
-                            log("Error creating temp directory:" + parentFolder.getPath());
-                            return false;
+                File targetFile=new File(targetFolder, zae.getName());
+                if (zae.isDirectory()) {
+                    if (!targetFile.mkdirs())
+                        log("no se pudo crear la carpeta "+targetFile.getAbsolutePath());
+                } else {
+//                    System.out.println(targetFile.createNewFile());
+                    if (!targetFile.getParentFile().exists() && !targetFile.getParentFile().mkdirs())
+                        log("no se pudo crear la carpeta "+targetFile.getAbsolutePath());
+                    FileOutputStream fos = null;
+                    try {
+                        fos = new FileOutputStream(targetFile);
+                        int n;
+                        InputStream entryContent = zipFile.getInputStream(zae);
+                        while ((n = entryContent.read(buf)) != -1) {
+                            if (n > 0) {
+                                fos.write(buf, 0, n);
+                            }
+                        }
+                    } finally {
+                        if (fos != null) {
+                            fos.close();
                         }
                     }
                 }
-
-                FileOutputStream fos = null;
-                try {
-                    fos = new FileOutputStream(destinationFile);
-                    int n;
-                    InputStream entryContent = zipFile.getInputStream(zipEntry);
-                    while ((n = entryContent.read(buf)) != -1) {
-                        if (n > 0) {
-                            fos.write(buf, 0, n);
-                        }
-                    }
-                } finally {
-                    if (fos != null) {
-                        fos.close();
-                    }
-                }
+                
             }
-            return true;
-
-        } catch (IOException e) {
-            log("Unzip failed:" + e.getMessage());
-        } finally {
-            if (zipFile != null) {
-                try {
-                    zipFile.close();
-                } catch (IOException e) {
-                    log("Error closing zip file");
-                }
-            }
+        } catch (IOException ioe) {
+            log.log(Level.SEVERE, srcZip, ioe);
         }
-
-        return false;
     }
 
     private static void log(String msg) {
         log.log(Level.WARNING, msg);
     }
 
-    /**
-     * Method for testing zipping and unzipping.
-     *
-     * @param args
-     */
-    public static void main(String[] args) throws IOException {
-        createZip("c:/temp/99/target", "c:/temp/99/output2.zip");
-        extractZip("c:/temp/99/output2.zip", "c:/temp/99/1");
-    }
 }
