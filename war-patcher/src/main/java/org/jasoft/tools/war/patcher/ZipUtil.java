@@ -25,6 +25,10 @@ public class ZipUtil {
 
     static final Logger log=Logger.getLogger(ZipUtil.class.getName());
     
+    public static void createZip(String directoryPath, String zipPath) throws IOException {
+        createZip(directoryPath, zipPath, false);
+    }
+    
     /**
      * Creates a zip file at the specified path with the contents of the
      * specified directory. NB:
@@ -33,9 +37,10 @@ public class ZipUtil {
      * created. eg. c:/temp
      * @param zipPath The full path of the archive to create. eg.
      * c:/temp/archive.zip
+     * @param onlyContent Indica si en el archivo zip se incluye sólo el contenido, falso por defecto
      * @throws IOException If anything goes wrong
      */
-    public static void createZip(String directoryPath, String zipPath) throws IOException {
+    public static void createZip(String directoryPath, String zipPath, boolean onlyContent) throws IOException {
         FileOutputStream fOut = null;
         BufferedOutputStream bOut = null;
         ZipArchiveOutputStream tOut = null;
@@ -44,7 +49,15 @@ public class ZipUtil {
             fOut = new FileOutputStream(new File(zipPath));
             bOut = new BufferedOutputStream(fOut);
             tOut = new ZipArchiveOutputStream(bOut);
-            addFileToZip(tOut, directoryPath, "");
+            if (!onlyContent) {
+                addFileToZip(tOut, directoryPath, "");
+            } else {
+                File dir=new File(directoryPath);
+                File[] files=dir.listFiles();
+                for (File file : files) {
+                    addFileToZip(tOut, file.getAbsolutePath(), "");
+                }
+            }
         } finally {
             tOut.finish();
             tOut.close();

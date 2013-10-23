@@ -14,7 +14,7 @@ public class App
     {
 //        String filepath="D:\\dev\\prj\\sisprod2\\app\\src\\master\\sisprod-webapp\\target\\sisprod-webapp-0.7.0.war";
         String srcFile="D:\\dev\\prj\\_jgin\\test\\sisprod-webapp-0.7.0.war";
-        String targetFile="D:\\dev\\prj\\_jgin\\test\\sisprod-webapp-0.7.1.war";
+        String targetFile="D:\\dev\\prj\\_jgin\\test\\sisprod-webapp-0.7.2.war";
 ////        listFiles(filepath);
 //        
         ZipDiff zd=new ZipDiff();
